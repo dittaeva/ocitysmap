@@ -4,7 +4,7 @@
 # Bassem JARKAS <jarkas@gmail.com>, 2010.
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: ocitysmap\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-03-31 23:23+CEST\n"
 "PO-Revision-Date: 2010-01-12 17:30+0300\n"
