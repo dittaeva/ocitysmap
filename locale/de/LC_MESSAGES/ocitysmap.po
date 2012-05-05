@@ -34,7 +34,7 @@ msgstr "Kindergarten"
 #: ocitysmap2/indexlib/indexer.py:168
 #: ocitysmap2/indexlib/indexer.py:169
 msgid "Education"
-msgstr "Bildungseinrichtungen"
+msgstr "Bildung"
 
 #: ocitysmap2/indexlib/indexer.py:166
 msgid "School"
@@ -61,7 +61,7 @@ msgstr "Rathaus"
 #: ocitysmap2/indexlib/indexer.py:172
 #: ocitysmap2/indexlib/indexer.py:174
 msgid "Public buildings"
-msgstr "Öffentliche Einrichtungen"
+msgstr "Öffentliche Gebäude"
 
 #: ocitysmap2/indexlib/indexer.py:171
 msgid "Post office"
@@ -69,7 +69,7 @@ msgstr "Postamt"
 
 #: ocitysmap2/indexlib/indexer.py:173
 msgid "Public building"
-msgstr "Öffentliche Einrichtung"
+msgstr "Öffentliches Gebäude"
 
 #: ocitysmap2/indexlib/indexer.py:174
 msgid "Police"
@@ -117,8 +117,7 @@ msgid ""
 msgstr ""
 "Copyright © %(year)d MapOSMatic/OCitySMap-Entwickler. Kartendaten © %(year)d OpenStreetMap.org und Mitwirkende (cc-by-sa).\n"
 "Erstellt am %(date)s mit OSM-Daten vom %(osmdate)s. Dieser Plan kann ungenau oder unvollständig sein.\n"
-"Sie können helfen, diesen Plan zu verbessern.\n"
-" Siehe http://www.openstreetmap.de/faq.html"
+"Sie können helfen, diesen Plan zu verbessern. Siehe http://www.openstreetmap.de/faq.html"
 
 #: ocitysmap2/layoutlib/single_page_renderers.py:634
 msgid "Test gettext"

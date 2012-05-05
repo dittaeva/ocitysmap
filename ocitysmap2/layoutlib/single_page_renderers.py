@@ -26,10 +26,10 @@ import math
 import datetime
 import cairo
 import locale
-try:
-    import mapnik2 as mapnik
-except ImportError:
-    import mapnik
+import mapnik
+assert mapnik.mapnik_version >= 200100, \
+    "Mapnik module version %s is too old, see ocitysmap's INSTALL " \
+    "for more details." % mapnik.mapnik_version_string()
 import pango
 import pangocairo
 
@@ -79,10 +79,6 @@ class SinglePageRenderer(Renderer):
         if not self.street_index.categories:
             LOG.warning("Designated area leads to an empty index")
             self.street_index = None
-
-        # Dump the CSV street index
-        if self.street_index:
-            self.street_index.write_to_csv(rc.title, '%s.csv' % file_prefix)
 
         self._grid_legend_margin_pt = \
             min(Renderer.GRID_LEGEND_MARGIN_RATIO * self.paper_width_pt,
@@ -155,6 +151,10 @@ class SinglePageRenderer(Renderer):
         # Update the street_index to reflect the grid's actual position
         if self.grid and self.street_index:
             self.street_index.apply_grid(self.grid)
+
+        # Dump the CSV street index
+        if self.street_index:
+            self.street_index.write_to_csv(rc.title, '%s.csv' % file_prefix)
 
         # Commit the internal rendering stack of the map
         self._map_canvas.render()
@@ -404,7 +404,8 @@ class SinglePageRenderer(Renderer):
         # Draw the rescaled Map
         ctx.save()
         rendered_map = self._map_canvas.get_rendered_map()
-        LOG.debug('Map scale: 1/%f' % rendered_map.scale_denominator())
+        LOG.debug('Mapnik scale: 1/%f' % rendered_map.scale_denominator())
+        LOG.debug('Actual scale: 1/%f' % self._map_canvas.get_actual_scale())
         mapnik.render(rendered_map, ctx)
         ctx.restore()
 
@@ -453,15 +454,14 @@ class SinglePageRenderer(Renderer):
 
     @staticmethod
     def _generic_get_compatible_paper_sizes(bounding_box,
-                                            resolution_km_in_mm=Renderer.DEFAULT_KM_IN_MM, index_position = None):
+                                            scale=Renderer.DEFAULT_SCALE, index_position = None):
         """Returns a list of the compatible paper sizes for the given bounding
         box. The list is sorted, smaller papers first, and a "custom" paper
         matching the dimensions of the bounding box is added at the end.
 
         Args:
             bounding_box (coords.BoundingBox): the map geographic bounding box.
-            resolution_km_in_mm (int): size of a geographic kilometer in
-                milimeters on the rendered map.
+            scale (int): minimum mapnik scale of the map.
            index_position (str): None or 'side' (index on side),
               'bottom' (index at bottom).
 
@@ -469,9 +469,17 @@ class SinglePageRenderer(Renderer):
         mm, portrait_ok, landscape_ok, is_default). Paper sizes are
         represented in portrait mode.
         """
+
+        # the mapnik scale depends on the latitude
+        lat = bounding_box.get_top_left()[0]
+        scale *= math.cos(math.radians(lat))
+
+        # by convention, mapnik uses 90 ppi whereas cairo uses 72 ppi
+        scale *= float(72) / 90
+
         geo_height_m, geo_width_m = bounding_box.spheric_sizes()
-        paper_width_mm = int(geo_width_m/1000.0 * resolution_km_in_mm)
-        paper_height_mm = int(geo_height_m/1000.0 * resolution_km_in_mm)
+        paper_width_mm = geo_width_m * 1000 / scale
+        paper_height_mm = geo_height_m * 1000 / scale
 
         LOG.debug('Map represents %dx%dm, needs at least %.1fx%.1fcm '
                   'on paper.' % (geo_width_m, geo_height_m,
@@ -485,9 +493,19 @@ class SinglePageRenderer(Renderer):
             paper_height_mm /= (1. -
                                 SinglePageRenderer.MAX_INDEX_OCCUPATION_RATIO)
 
+        # Take margins into account
+        paper_width_mm += 2 * commons.convert_pt_to_mm(Renderer.PRINT_SAFE_MARGIN_PT)
+        paper_height_mm += 2 * commons.convert_pt_to_mm(Renderer.PRINT_SAFE_MARGIN_PT)
+
+        # Take grid legend, title and copyright into account
+        paper_width_mm /= 1 - Renderer.GRID_LEGEND_MARGIN_RATIO
+        paper_height_mm /= 1 - (Renderer.GRID_LEGEND_MARGIN_RATIO + 0.05 + 0.02)
+
         # Transform the values into integers
         paper_width_mm  = int(math.ceil(paper_width_mm))
         paper_height_mm = int(math.ceil(paper_height_mm))
+
+        LOG.debug('Best fit is %.1fx%.1fcm.' % (paper_width_mm/10., paper_height_mm/10.))
 
         # Test both portrait and landscape orientations when checking for paper
         # sizes.
@@ -532,22 +550,21 @@ class SinglePageRendererNoIndex(SinglePageRenderer):
 
     @staticmethod
     def get_compatible_paper_sizes(bounding_box,
-                                   resolution_km_in_mm=Renderer.DEFAULT_KM_IN_MM):
+                                   scale=Renderer.DEFAULT_SCALE):
         """Returns a list of the compatible paper sizes for the given bounding
         box. The list is sorted, smaller papers first, and a "custom" paper
         matching the dimensions of the bounding box is added at the end.
 
         Args:
             bounding_box (coords.BoundingBox): the map geographic bounding box.
-            resolution_km_in_mm (int): size of a geographic kilometer in
-                milimeters on the rendered map.
+            scale (int): minimum mapnik scale of the map.
 
         Returns a list of tuples (paper name, width in mm, height in
         mm, portrait_ok, landscape_ok). Paper sizes are represented in
         portrait mode.
         """
         return SinglePageRenderer._generic_get_compatible_paper_sizes(
-            bounding_box, resolution_km_in_mm, None)
+            bounding_box, scale, None)
 
 
 class SinglePageRendererIndexOnSide(SinglePageRenderer):
@@ -567,22 +584,21 @@ class SinglePageRendererIndexOnSide(SinglePageRenderer):
 
     @staticmethod
     def get_compatible_paper_sizes(bounding_box,
-                                   resolution_km_in_mm=Renderer.DEFAULT_KM_IN_MM):
+                                   scale=Renderer.DEFAULT_SCALE):
         """Returns a list of the compatible paper sizes for the given bounding
         box. The list is sorted, smaller papers first, and a "custom" paper
         matching the dimensions of the bounding box is added at the end.
 
         Args:
             bounding_box (coords.BoundingBox): the map geographic bounding box.
-            resolution_km_in_mm (int): size of a geographic kilometer in
-                milimeters on the rendered map.
+            scale (int): minimum mapnik scale of the map.
 
         Returns a list of tuples (paper name, width in mm, height in
         mm, portrait_ok, landscape_ok). Paper sizes are represented in
         portrait mode.
         """
         return SinglePageRenderer._generic_get_compatible_paper_sizes(
-            bounding_box, resolution_km_in_mm, 'side')
+            bounding_box, scale, 'side')
 
 
 class SinglePageRendererIndexBottom(SinglePageRenderer):
@@ -602,22 +618,21 @@ class SinglePageRendererIndexBottom(SinglePageRenderer):
 
     @staticmethod
     def get_compatible_paper_sizes(bounding_box,
-                                   resolution_km_in_mm=Renderer.DEFAULT_KM_IN_MM):
+                                   scale=Renderer.DEFAULT_SCALE):
         """Returns a list of the compatible paper sizes for the given bounding
         box. The list is sorted, smaller papers first, and a "custom" paper
         matching the dimensions of the bounding box is added at the end.
 
         Args:
             bounding_box (coords.BoundingBox): the map geographic bounding box.
-            resolution_km_in_mm (int): size of a geographic kilometer in
-                milimeters on the rendered map.
+            scale (int): minimum mapnik scale of the map.
 
         Returns a list of tuples (paper name, width in mm, height in
         mm, portrait_ok, landscape_ok). Paper sizes are represented in
         portrait mode.
         """
         return SinglePageRenderer._generic_get_compatible_paper_sizes(
-            bounding_box, resolution_km_in_mm, 'bottom')
+            bounding_box, scale, 'bottom')
 
 
 if __name__ == '__main__':

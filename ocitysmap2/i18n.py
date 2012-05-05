@@ -115,9 +115,10 @@ class i18n_fr_generic(i18n):
     # for IndexPageGenerator.upper_unaccent_string
     E_ACCENT = re.compile(ur"[éèêëẽ]", re.IGNORECASE | re.UNICODE)
     I_ACCENT = re.compile(ur"[íìîïĩ]", re.IGNORECASE | re.UNICODE)
-    A_ACCENT = re.compile(ur"[áàâäã]", re.IGNORECASE | re.UNICODE)
-    O_ACCENT = re.compile(ur"[óòôöõ]", re.IGNORECASE | re.UNICODE)
+    A_ACCENT = re.compile(ur"[áàâäãæ]", re.IGNORECASE | re.UNICODE)
+    O_ACCENT = re.compile(ur"[óòôöõœ]", re.IGNORECASE | re.UNICODE)
     U_ACCENT = re.compile(ur"[úùûüũ]", re.IGNORECASE | re.UNICODE)
+    Y_ACCENT = re.compile(ur"[ÿ]", re.IGNORECASE | re.UNICODE)
 
     def __init__(self, language, locale_path):
         self.language = str(language)
@@ -129,6 +130,7 @@ class i18n_fr_generic(i18n):
         s = self.A_ACCENT.sub("a", s)
         s = self.O_ACCENT.sub("o", s)
         s = self.U_ACCENT.sub("u", s)
+        s = self.Y_ACCENT.sub("y", s)
         return s.upper()
 
     def language_code(self):
@@ -192,8 +194,9 @@ class i18n_es_generic(i18n):
             u"Calzada", u"Camino", u"Camí", u"Carrer", u"Carretera",
             u"Glorieta", u"Parque", u"Pasaje", u"Pasarela", u"Paseo", u"Plaza",
             u"Plaça", u"Privada", u"Puente", u"Ronda", u"Salida", u"Travesia" ]
-    DETERMINANTS = [ u" de", u" de la", u" del", u" de las",
-                     u" dels", u" de los", u" d'", u" de l'", u"" ]
+    DETERMINANTS = [ u" de la", u" de los", u" de las",
+                     u" dels", u" del", u" d'", u" de l'",
+                     u" de", u"" ]
 
     SPACE_REDUCE = re.compile(r"\s+")
     PREFIX_REGEXP = re.compile(r"^(?P<prefix>(%s)(%s)?)\s?\b(?P<name>.+)" %
@@ -361,17 +364,18 @@ class i18n_ca_generic(i18n):
         return self.upper_unaccent_string(a) == self.upper_unaccent_string(b)
 
 class i18n_pt_br_generic(i18n):
-    APPELLATIONS = [ u"Aeroporto", u"Alameda", u"Área", u"Avenida",
-                     u"Campo", u"Chácara", u"Colônia",
-                     u"Condomínio", u"Conjunto", u"Distrito", u"Esplanada", u"Estação",
-                     u"Estrada", u"Favela", u"Fazenda",
-                     u"Feira", u"Jardim", u"Ladeira", u"Lago",
+    APPELLATIONS = [ u"Aeroporto", u"Aer.", u"Alameda", u"Al.", u"Apartamento", u"Ap.", 
+                     u"Área", u"Avenida", u"Av.", u"Beco", u"Bc.", u"Bloco", u"Bl.", 
+                     u"Caminho", u"Cam.", u"Campo", u"Chácara", u"Colônia",
+                     u"Condomínio", u"Conjunto", u"Cj.", u"Distrito", u"Esplanada", u"Espl.", 
+                     u"Estação", u"Est.", u"Estrada", u"Estr.", u"Favela", u"Fazenda",
+                     u"Feira", u"Jardim", u"Jd.", u"Ladeira", u"Lago",
                      u"Lagoa", u"Largo", u"Loteamento", u"Morro", u"Núcleo",
-                     u"Parque", u"Passarela", u"Pátio", u"Praça", u"Quadra",
-                     u"Recanto", u"Residencial", u"Rua",
-                     u"Setor", u"Sítio", u"Travessa", u"Trecho", u"Trevo",
-                     u"Vale", u"Vereda", u"Via", u"Viaduto", u"Viela",
-                     u"Vila" ]
+                     u"Parque", u"Pq.", u"Passarela", u"Pátio", u"Praça", u"Pç.", u"Quadra",
+                     u"Recanto", u"Residencial", u"Resid.", u"Rua", u"R.", 
+                     u"Setor", u"Sítio", u"Travessa", u"Tv.", u"Trecho", u"Trevo",
+                     u"Vale", u"Vereda", u"Via", u"V.", u"Viaduto", u"Viela",
+                     u"Vila", u"Vl." ]
     DETERMINANTS = [ u" do", u" da", u" dos", u" das", u"" ]
     SPACE_REDUCE = re.compile(r"\s+")
     PREFIX_REGEXP = re.compile(r"^(?P<prefix>(%s)(%s)?)\s?\b(?P<name>.+)" %
@@ -658,6 +662,40 @@ class i18n_pl_generic(i18n):
     def first_letter_equal(self, a, b):
         return a == b
 
+class i18n_tr_TR_generic(i18n):
+    APPELLATIONS = [ u"Sokak", u"Sokağı" ]
+    DETERMINANTS = []
+    SPACE_REDUCE = re.compile(r"\s+")
+    PREFIX_REGEXP = re.compile(r"^(?P<prefix>(%s)(%s)?)\s?\b(?P<name>.+)" %
+                                    ("|".join(APPELLATIONS),
+                                     "|".join(DETERMINANTS)), re.IGNORECASE
+                                                                 | re.UNICODE)
+
+    def __init__(self, language, locale_path):
+        self.language = str(language)
+        _install_language(language, locale_path)
+
+    def upper_unaccent_string(self, s):
+        return s.upper()
+
+    def language_code(self):
+        return self.language
+
+    def user_readable_street(self, name):
+        #
+        # Make sure name actually contains something,
+        # the PREFIX_REGEXP.match fails on zero-length strings
+        #
+        if len(name) == 0:
+            return name
+
+        name = name.strip()
+        name = self.SPACE_REDUCE.sub(" ", name)
+        name = self.PREFIX_REGEXP.sub(r"\g<name> (\g<prefix>)", name)
+        return name
+
+    def first_letter_equal(self, a, b):
+        return self.upper_unaccent_string(a) == self.upper_unaccent_string(b)
 
 class i18n_de_generic(i18n):
     #
@@ -817,6 +855,10 @@ language_class_map = {
     'hr_HR.UTF-8': i18n_hr_HR,
     'ru_RU.UTF-8': i18n_ru_generic,
     'pl_PL.UTF-8': i18n_pl_generic,
+    'nb_NO.UTF-8': i18n_generic,
+    'nn_NO.UTF-8': i18n_generic,
+    'tr_TR.UTF-8': i18n_tr_TR_generic,
+    'ast_ES.UTF-8': i18n_generic,
 }
 
 def install_translation(locale_name, locale_path):
